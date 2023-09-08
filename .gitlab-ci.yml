@@ -1,0 +1,56 @@
+default:
+  tags: [bash, cicd]
+
+stages:
+  - build
+  - style_test
+  - func_test
+  - deploy
+
+build:
+  stage: build
+  script:
+  - cd src/cat
+  - make
+  - cd ../grep
+  - make
+  artifacts:
+    paths:
+    - src/cat/s21_cat
+    - src/grep/s21_grep
+    expire_in: 30 day
+  after_script:
+    - bash src/notification.sh
+
+style_test:
+  stage: style_test
+  when: on_success
+  script:
+    - cp materials/linters/.clang-format src/
+    # - clang-format -i -Werror src/*/*.c src/*/*.h
+    - clang-format -n -Werror src/*/*.c src/*/*.h
+  after_script:
+    - bash src/notification.sh
+
+func_test:
+  stage: func_test
+  when: on_success
+  script:
+    - cd src/cat
+    - make test
+    - cd ../grep
+    - make test
+  after_script:
+    - bash src/notification.sh
+
+deploy:
+  stage: deploy
+  when: manual
+  script:
+    - cd src
+    - scp cat/s21_cat grep/s21_grep sho@172.24.116.8:/home/sho
+    - ssh sho@172.24.116.8 mv /home/sho/s21_* /usr/local/bin/
+  after_script:
+    - bash src/notification.sh
+
+    
